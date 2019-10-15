@@ -2,8 +2,8 @@ import random
 import asyncio
 import requests
 import time
-import json
 import hashlib
+import json
 import rsa
 import base64
 import re
@@ -18,8 +18,29 @@ def CurrentTime():
 
 class login():
     cookies = ""
-    username = input("输入用户名:")
-    password = input("输入密码:")
+    try:
+        with open("config.json", "r") as conf:
+            d = json.load(conf)
+            if d["username"] != "null" and d["password"] != "null":
+                print("读取本地配置")
+                print("WARNING: 非私人电脑请取消本地模式")
+                username = d["username"]
+                password = d["password"]
+            else:
+                raise FileNotFoundError
+
+    except KeyError:
+        flag = input("配置文件错误,是否重置 (y/n)")
+        if flag == 'y':
+            reset = {"username": "null", "password": "null"}
+            with open("config.json", "w") as conf:
+                json.dump(reset, conf)
+        exit()
+
+    except FileNotFoundError:
+        username = input("请输入用户名：")
+        password = input("请输入密码：")
+
     headers = {
         "Host": "api.bilibili.com",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36",
@@ -82,6 +103,7 @@ class login():
             )['data']['token_info']['access_token']
         except:
             print("登录失败，回显为:", response.json())
+            exit()
 
 
 class judge(login):
