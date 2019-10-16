@@ -20,10 +20,10 @@ class login():
     cookies = ""
     try:
         with open("config.json", "r") as conf:
+            print("读取本地配置")
             d = json.load(conf)
             if d["username"] != "null" and d["password"] != "null":
-                print("读取本地配置")
-                print("WARNING: 非私人电脑请取消本地模式")
+                print("WARNING: 非私人电脑请不要使用本地模式")
                 username = d["username"]
                 password = d["password"]
             else:
@@ -87,7 +87,7 @@ class login():
             cookie_format = ""
             for i in range(0, len(cookie)):
                 cookie_format = cookie_format + \
-                    cookie[i]['name'] + "=" + cookie[i]['value'] + ";"
+                                cookie[i]['name'] + "=" + cookie[i]['value'] + ";"
             s1 = re.findall(r'bili_jct=(\S+)', cookie_format, re.M)
             s2 = re.findall(r'DedeUserID=(\S+)', cookie_format, re.M)
             login.cookies = cookie_format
@@ -101,6 +101,7 @@ class login():
             login.uid = (s2[0].split(";")[0])
             login.access_key = response.json(
             )['data']['token_info']['access_token']
+            print("登录成功")
         except:
             print("登录失败，回显为:", response.json())
             exit()
@@ -132,7 +133,7 @@ class judge(login):
     async def get_attention(self):
         top50_attention_list = []
         url = "https://api.bilibili.com/x/relation/followings?vmid=" + \
-            str(login.uid) + "&ps=50&order=desc"
+              str(login.uid) + "&ps=50&order=desc"
         headers = {
             "Host": "api.bilibili.com",
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36",
@@ -151,7 +152,7 @@ class judge(login):
         video_list = []
         for mid in top50_attention_list:
             url = "https://space.bilibili.com/ajax/member/getSubmitVideos?mid=" + \
-                str(mid) + "&pagesize=100&tid=0"
+                  str(mid) + "&pagesize=100&tid=0"
             response = requests.get(url)
             datalen = len(response.json()['data']['vlist'])
             for i in range(0, datalen):
@@ -184,7 +185,7 @@ class judge(login):
         await asyncio.sleep(10)
 
     async def get_cid(self, aid):
-        url = "https://www.bilibili.com/widget/getPageList?aid="+str(aid)
+        url = "https://www.bilibili.com/widget/getPageList?aid=" + str(aid)
         response = requests.get(url)
         cid = response.json()[0]['cid']
         return cid
@@ -199,8 +200,10 @@ class judge(login):
             "Cookie": "sid=8wfvu7i7"
         }
         ts = CurrentTime()
-        temp_params = "access_key="+login.access_key+"&aid=" + \
-            str(aid)+"&appkey=1d8b6e7d45233436&build=5260003&from=7&mobi_app=android&platform=android&ts="+str(ts)
+        temp_params = "access_key=" + login.access_key + "&aid=" + \
+                      str(
+                          aid) + "&appkey=1d8b6e7d45233436&build=5260003&from=7&mobi_app=android&platform=android&ts=" + str(
+            ts)
         sign = await self.calc_sign(temp_params)
         data = {
             "access_key": login.access_key,
@@ -221,7 +224,7 @@ class judge(login):
         headers = {
             "Host": "api.bilibili.com",
             "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.181 Safari/537.36",
-            "Referer": "https://www.bilibili.com/video/av"+str(aid),
+            "Referer": "https://www.bilibili.com/video/av" + str(aid),
             "Cookie": login.cookies
         }
         data = {
@@ -242,53 +245,65 @@ class judge(login):
         print("watch_Av_state:", response.text)
 
     async def coin_run(self):
-        while 1:
-            try:
-                i = await self.query_reward()
-                coin_exp = i[3]
-                while coin_exp < 50:
-                    await self.givecoin()
-                    coin_exp = coin_exp + 10
-                if coin_exp == 50:
-                    print("投币任务完成")
-                    await asyncio.sleep(86400)
-                    await self.coin_run()
-            except:
-                print("coin_run出错")
+        try:
+            print("开始投币...")
+            i = await self.query_reward()
+            coin_exp = i[3]
+            while coin_exp < 50:
+                await self.givecoin()
+                coin_exp = coin_exp + 10
+            if coin_exp == 50:
+                print("投币任务完成")
+        except:
+            print("coin_run出错")
 
     async def share_run(self):
-        while 1:
-            try:
-                await self.share()
-                print("分享任务完成")
-                await asyncio.sleep(21600)
-            except:
-                print("share_run出错")
+        try:
+            print("开始分享视频...")
+            await self.share()
+            print("分享任务完成")
+        except:
+            print("share_run出错")
 
     async def watch_run(self):
-        while 1:
-            try:
-                video_list = await self.getsubmit_video()
-                aid = video_list[random.randint(0, len(video_list))]
-                cid = await self.get_cid(aid)
-                await self.watch_av(aid, cid)
-                await asyncio.sleep(21600)
-            except:
-                print("watch_run出错")
+        try:
+            print("开始观看视频...")
+            video_list = await self.getsubmit_video()
+            aid = video_list[random.randint(0, len(video_list))]
+            cid = await self.get_cid(aid)
+            await self.watch_av(aid, cid)
+            print("观看视频完成")
+        except:
+            print("watch_run出错")
+
+    async def check(self):
+        try:
+            i = await self.query_reward()
+            print("-" * 50 + "今日经验完成情况统计" + "-" * 50)
+            print("每日登录 " + "完成" if i[0] else "未完成")
+            print("观看视频 " + "完成" if i[1] else "未完成")
+            print("分享 " + "完成" if i[2] else "未完成")
+            print("投币 " + "完成" if i[3] == 50 else (i[3] + "/50"))
+            print("-" * 118)
+
+        except:
+            print("check出错")
 
 
 loop = asyncio.get_event_loop()
-tasks1 = [
+task1 = [
     judge().login()
 ]
-loop.run_until_complete(asyncio.wait(tasks1))
 
-loop2 = asyncio.get_event_loop()
-
-tasks2 = [
+task2 = [
     judge().coin_run(),
     judge().share_run(),
-    judge().watch_run(),
-
+    judge().watch_run()
 ]
-loop.run_until_complete(asyncio.wait(tasks2))
+
+task3 = [
+    judge().check()
+]
+loop.run_until_complete(asyncio.wait(task1))
+loop.run_until_complete(asyncio.wait(task2))
+loop.run_until_complete(asyncio.wait(task3))
