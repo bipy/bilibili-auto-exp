@@ -15,14 +15,12 @@ def CurrentTime():
     currenttime = str(int(time.mktime(datetime.datetime.now().timetuple())))
     return currenttime
 
-
 class login():
-    cookies = ""
     try:
         with open("config.json", "r") as conf:
-            print("读取本地配置")
             d = json.load(conf)
             if d["username"] != "null" and d["password"] != "null":
+                print("读取本地配置")
                 print("WARNING: 非私人电脑请不要使用本地模式")
                 username = d["username"]
                 password = d["password"]
@@ -41,6 +39,7 @@ class login():
         username = input("请输入用户名：")
         password = input("请输入密码：")
 
+    cookies = ""
     headers = {
         "Host": "api.bilibili.com",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36",
@@ -99,8 +98,7 @@ class login():
             }
             login.csrf = (s1[0]).split(";")[0]
             login.uid = (s2[0].split(";")[0])
-            login.access_key = response.json(
-            )['data']['token_info']['access_token']
+            login.access_key = response.json()['data']['token_info']['access_token']
             print("登录成功")
         except:
             print("登录失败，回显为:", response.json())
@@ -108,6 +106,8 @@ class login():
 
 
 class judge(login):
+
+    video_list = []
 
     def randomint(self):
         return ''.join(str(random.choice(range(10))) for _ in range(17))
@@ -131,7 +131,7 @@ class judge(login):
         return [iflogin, ifwatch_av, ifshare_av, int(ifgive_coin)]
 
     async def get_attention(self):
-        top50_attention_list = []
+        attention_list = []
         url = "https://api.bilibili.com/x/relation/followings?vmid=" + \
               str(login.uid) + "&ps=50&order=desc"
         headers = {
@@ -142,28 +142,37 @@ class judge(login):
         }
         response = requests.get(url, headers=headers)
         checklen = len(response.json()['data']['list'])
-        for i in range(0, checklen):
+        for i in range(0, checklen if checklen < 20 else 20):
             uids = (response.json()['data']['list'][i]['mid'])
-            top50_attention_list.append(uids)
-        return top50_attention_list
+            attention_list.append(uids)
+        return attention_list
 
     async def getsubmit_video(self):
-        top50_attention_list = await self.get_attention()
-        video_list = []
-        for mid in top50_attention_list:
+        attention_list = await self.get_attention()
+        judge.video_list = []
+        for mid in attention_list:
             url = "https://space.bilibili.com/ajax/member/getSubmitVideos?mid=" + \
                   str(mid) + "&pagesize=100&tid=0"
             response = requests.get(url)
             datalen = len(response.json()['data']['vlist'])
-            for i in range(0, datalen):
+            for i in range(0, datalen if datalen < 10 else 10):
                 aid = response.json()['data']['vlist'][i]['aid']
-                video_list.append(aid)
-        return video_list
+                judge.video_list.append(aid)
+
+    async def init_video_list(self):
+        while 1:
+            print("获取关注列表...")
+            await self.getsubmit_video()
+            if judge.video_list is None:
+                print("获取关注列表出错")
+            else:
+                print("获取关注列表成功")
+                break
+
 
     async def givecoin(self):
-        video_list = await self.getsubmit_video()
         url = "https://api.bilibili.com/x/web-interface/coin/add"
-        aid = video_list[random.randint(0, len(video_list))]
+        aid = self.video_list[random.randint(0, len(self.video_list))]
         data = {
             "aid": aid,
             "multiply": "1",
@@ -191,8 +200,7 @@ class judge(login):
         return cid
 
     async def share(self):
-        video_list = await self.getsubmit_video()
-        aid = video_list[random.randint(0, len(video_list))]
+        aid = self.video_list[random.randint(0, len(self.video_list))]
         url1 = "https://app.bilibili.com/x/v2/view/share/add"
         headers = {
             "User-Agent": "Mozilla/5.0 BiliDroid/5.26.3 (bbcallen@gmail.com)",
@@ -250,31 +258,34 @@ class judge(login):
             i = await self.query_reward()
             coin_exp = i[3]
             while coin_exp < 50:
+                print("投币 * 1")
                 await self.givecoin()
                 coin_exp = coin_exp + 10
             if coin_exp == 50:
                 print("投币任务完成")
-        except:
+        except Exception as e:
             print("coin_run出错")
+            print(e)
 
     async def share_run(self):
         try:
             print("开始分享视频...")
             await self.share()
             print("分享任务完成")
-        except:
+        except Exception as e:
             print("share_run出错")
+            print(e)
 
     async def watch_run(self):
         try:
             print("开始观看视频...")
-            video_list = await self.getsubmit_video()
-            aid = video_list[random.randint(0, len(video_list))]
+            aid = self.video_list[random.randint(0, len(self.video_list))]
             cid = await self.get_cid(aid)
             await self.watch_av(aid, cid)
             print("观看视频完成")
-        except:
+        except Exception as e:
             print("watch_run出错")
+            print(e)
 
     async def check(self):
         try:
@@ -284,26 +295,37 @@ class judge(login):
             print("观看视频 " + "完成" if i[1] else "未完成")
             print("分享 " + "完成" if i[2] else "未完成")
             print("投币 " + "完成" if i[3] == 50 else (i[3] + "/50"))
-            print("-" * 118)
+            print("-" * 120)
 
-        except:
+        except Exception as e:
             print("check出错")
+            print(e)
 
 
 loop = asyncio.get_event_loop()
+
+
 task1 = [
     judge().login()
 ]
 
 task2 = [
+    judge().init_video_list()
+]
+
+task3 = [
     judge().coin_run(),
     judge().share_run(),
     judge().watch_run()
 ]
 
-task3 = [
+task4 = [
     judge().check()
 ]
 loop.run_until_complete(asyncio.wait(task1))
+
 loop.run_until_complete(asyncio.wait(task2))
+
 loop.run_until_complete(asyncio.wait(task3))
+
+loop.run_until_complete(asyncio.wait(task4))
