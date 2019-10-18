@@ -187,11 +187,12 @@ class judge(login):
             "Cookie": login.cookies
         }
         response = requests.post(url, data=data, headers=headers)
+        print("投币 * 1")
         print("coin_task:", response.text)
 
         if response.json()['code'] != 0:
             await self.givecoin()
-        await asyncio.sleep(10)
+        await asyncio.sleep(2)
 
     async def get_cid(self, aid):
         url = "https://www.bilibili.com/widget/getPageList?aid=" + str(aid)
@@ -258,7 +259,6 @@ class judge(login):
             i = await self.query_reward()
             coin_exp = i[3]
             while coin_exp < 50:
-                print("投币 * 1")
                 await self.givecoin()
                 coin_exp = coin_exp + 10
             if coin_exp == 50:
@@ -291,10 +291,10 @@ class judge(login):
         try:
             i = await self.query_reward()
             print("-" * 50 + "今日经验完成情况统计" + "-" * 50)
-            print("每日登录 " + "完成" if i[0] else "未完成")
-            print("观看视频 " + "完成" if i[1] else "未完成")
-            print("分享 " + "完成" if i[2] else "未完成")
-            print("投币 " + "完成" if i[3] == 50 else (i[3] + "/50"))
+            print("每日登录 完成" if i[0] else "每日登录 未完成")
+            print("观看视频 完成" if i[1] else "观看视频 未完成")
+            print("分享 完成" if i[2] else "分享 未完成")
+            print("投币 完成" if i[3] == 50 else ("投币 " + i[3] + "/50"))
             print("-" * 120)
 
         except Exception as e:
