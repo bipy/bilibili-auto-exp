@@ -8,6 +8,7 @@ import rsa
 import base64
 import re
 import datetime
+import getpass
 from urllib import parse
 
 
@@ -16,6 +17,7 @@ def CurrentTime():
     return currenttime
 
 class login():
+
     try:
         with open("config.json", "r") as conf:
             d = json.load(conf)
@@ -37,7 +39,7 @@ class login():
 
     except FileNotFoundError:
         username = input("请输入用户名：")
-        password = input("请输入密码：")
+        password = getpass.getpass("请输入密码：（直接输入，无显示）")
 
     cookies = ""
     headers = {
@@ -49,6 +51,9 @@ class login():
     csrf = ""
     uid = ""
     access_key = ""
+
+
+
 
     async def calc_sign(self, str):
         str = str + "560c52ccd288fed045859ed18bffd973"
