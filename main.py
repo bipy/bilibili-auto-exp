@@ -16,44 +16,49 @@ def CurrentTime():
     currenttime = str(int(time.mktime(datetime.datetime.now().timetuple())))
     return currenttime
 
+
 class login():
-
-    try:
-        with open("config.json", "r") as conf:
-            d = json.load(conf)
-            if d["username"] != "null" and d["password"] != "null":
-                print("读取本地配置")
-                print("WARNING: 非私人电脑请不要使用本地模式")
-                username = d["username"]
-                password = d["password"]
-            else:
-                raise FileNotFoundError
-
-    except KeyError:
-        flag = input("配置文件错误,是否重置 (y/n)")
-        if flag == 'y':
-            reset = {"username": "null", "password": "null"}
-            with open("config.json", "w") as conf:
-                json.dump(reset, conf)
-        exit()
-
-    except FileNotFoundError:
-        username = input("请输入用户名：")
-        password = getpass.getpass("请输入密码：（直接输入，无显示）")
-
     cookies = ""
+    save_cookies = ""
+    local_mode = ""
+    csrf = ""
+    uid = ""
+    access_key = ""
     headers = {
         "Host": "api.bilibili.com",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/66.0.3359.139 Safari/537.36",
         "Accept-Language": "zh-CN,zh;q=0.9,en;q=0.8",
         "Cookie": cookies
     }
-    csrf = ""
-    uid = ""
-    access_key = ""
+    try:
+        with open("config.json", "r") as conf:
+            d = json.load(conf)
+            if d["cookies"] != "undef" and d["access_key"] != "undef":
+                print("自动登录中...")
+                print("Tips: 手动删除 config.json 以禁用自动登录")
+                cookies = d["cookies"]
+                access_key = d["access_key"]
+                local_mode = "true"
+            else:
+                raise FileNotFoundError
 
+    except KeyError:
+        flag = input("配置文件错误,是否重置 (y/n)")
+        if flag == 'y':
+            reset = {
+                "cookies": "undef",
+                "access_key": "undef"
+            }
+            with open("config.json", "w") as conf:
+                json.dump(reset, conf)
+        print("重置成功，请重新启动程序")
+        exit()
 
-
+    except FileNotFoundError:
+        username = input("请输入用户名：")
+        password = getpass.getpass("请输入密码：（直接输入，无显示）")
+        print("WARNING: 非私人电脑请不要使用自动登录")
+        save_cookies = input("下次自动登录？（y/n）")
 
     async def calc_sign(self, str):
         str = str + "560c52ccd288fed045859ed18bffd973"
@@ -79,19 +84,24 @@ class login():
         return username, password
 
     async def login(self):
-        url = "https://passport.bilibili.com/api/v2/oauth2/login"
-        user, pwd = await self.get_pwd(login.username, login.password)
-        temp_params = 'appkey=1d8b6e7d45233436&password=' + pwd + '&username=' + user
-        sign = await self.calc_sign(temp_params)
-        headers = {"Content-type": "application/x-www-form-urlencoded"}
-        payload = temp_params + "&sign=" + sign
-        response = requests.post(url, data=payload, headers=headers)
         try:
-            cookie = (response.json()['data']['cookie_info']['cookies'])
-            cookie_format = ""
-            for i in range(0, len(cookie)):
-                cookie_format = cookie_format + \
-                                cookie[i]['name'] + "=" + cookie[i]['value'] + ";"
+            if login.local_mode != "true":
+                url = "https://passport.bilibili.com/api/v2/oauth2/login"
+                user, pwd = await self.get_pwd(login.username, login.password)
+                temp_params = 'appkey=1d8b6e7d45233436&password=' + pwd + '&username=' + user
+                sign = await self.calc_sign(temp_params)
+                headers = {"Content-type": "application/x-www-form-urlencoded"}
+                payload = temp_params + "&sign=" + sign
+                response = requests.post(url, data=payload, headers=headers)
+                cookie = (response.json()['data']['cookie_info']['cookies'])
+                cookie_format = ""
+                for i in range(0, len(cookie)):
+                    cookie_format = cookie_format + \
+                                    cookie[i]['name'] + "=" + cookie[i]['value'] + ";"
+                login.access_key = response.json()['data']['token_info']['access_token']
+            else:
+                cookie_format = login.cookies
+
             s1 = re.findall(r'bili_jct=(\S+)', cookie_format, re.M)
             s2 = re.findall(r'DedeUserID=(\S+)', cookie_format, re.M)
             login.cookies = cookie_format
@@ -103,15 +113,21 @@ class login():
             }
             login.csrf = (s1[0]).split(";")[0]
             login.uid = (s2[0].split(";")[0])
-            login.access_key = response.json()['data']['token_info']['access_token']
-            print("登录成功")
-        except:
+
+            if login.save_cookies == 'y':
+                temp = {
+                    "cookies": login.cookies,
+                    "access_key": login.access_key
+                }
+                with open("config.json", "w") as conf:
+                    json.dump(temp, conf)
+        except Exception as e:
             print("登录失败，回显为:", response.json())
+            print(e)
             exit()
 
 
 class judge(login):
-
     video_list = []
 
     def randomint(self):
@@ -173,7 +189,6 @@ class judge(login):
             else:
                 print("获取关注列表成功")
                 break
-
 
     async def givecoin(self):
         url = "https://api.bilibili.com/x/web-interface/coin/add"
@@ -301,6 +316,7 @@ class judge(login):
             print("分享 完成" if i[2] else "分享 未完成")
             print("投币 完成" if i[3] == 50 else ("投币 " + i[3] + "/50"))
             print("-" * 120)
+            input("按任意键退出")
 
         except Exception as e:
             print("check出错")
@@ -308,7 +324,6 @@ class judge(login):
 
 
 loop = asyncio.get_event_loop()
-
 
 task1 = [
     judge().login()
