@@ -124,6 +124,7 @@ class login():
         except Exception as e:
             print("登录失败，回显为:", response.json())
             print(e)
+            input("按任意键退出")
             exit()
 
 
