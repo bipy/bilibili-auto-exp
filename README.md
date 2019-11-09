@@ -109,7 +109,7 @@ python main.py
 ## 如何关闭自己不想要的功能?
 
 ```python
-tasks2 = [
+tasks3 = [
     judge().coin_run(),   # 投币任务
     judge().share_run(),  # 分享任务
     judge().watch_run(),  # 观看任务
